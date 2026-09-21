@@ -76,6 +76,7 @@ if(sb) await sb.from("customer_interactions").insert({qr_code:qr,interaction_typ
 const ids=["home","product","suggestion","complaint","praise","service","whatsapp","google","thanks"];
 function show(id){ids.forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));scrollTo(0,0)}
 document.querySelectorAll("[data-screen]").forEach(b=>b.onclick=()=>show(b.dataset.screen));
+document.querySelector(".google").onclick=()=>{window.location.href=cfg.GOOGLE_REVIEW_URL};
 document.querySelectorAll("[data-home]").forEach(b=>b.onclick=()=>show("home"));
 const map={product:"productInput",suggestion:"suggestionInput",complaint:"complaintInput",praise:"praiseInput"};
 const types={product:"produto_nao_encontrado",suggestion:"sugestao",complaint:"reclamacao",praise:"elogio"};
