@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voz do Cliente — Administração</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:#f4f5f7;
+  color:#222;
+}
+
+header{
+  background:#d71920;
+  color:white;
+  padding:18px 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+header h1{
+  margin:0;
+  font-size:22px;
+}
+
+header button{
+  background:white;
+  color:#d71920;
+  border:0;
+  padding:9px 14px;
+  border-radius:7px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.container{
+  max-width:1400px;
+  margin:auto;
+  padding:24px;
+}
+
+.login{
+  max-width:420px;
+  margin:80px auto;
+  background:white;
+  padding:30px;
+  border-radius:14px;
+  box-shadow:0 4px 20px rgba(0,0,0,.10);
+}
+
+.login h2{
+  margin-top:0;
+  color:#d71920;
+}
+
+input,select{
+  width:100%;
+  padding:12px;
+  border:1px solid #ccc;
+  border-radius:7px;
+  margin:6px 0 12px;
+  font-size:15px;
+}
+
+button.primary{
+  width:100%;
+  background:#d71920;
+  color:white;
+  border:0;
+  padding:12px;
+  border-radius:7px;
+  font-size:16px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.error{
+  color:#c00;
+  margin-top:12px;
+}
+
+.filters{
+  background:white;
+  padding:18px;
+  border-radius:12px;
+  margin-bottom:20px;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr auto;
+  gap:12px;
+  align-items:end;
+}
+
+.filters button{
+  background:#d71920;
+  color:white;
+  border:0;
+  padding:12px;
+  border-radius:7px;
+  cursor:pointer;
+}
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:12px;
+  margin-bottom:25px;
+}
+
+.card{
+  background:white;
+  padding:18px;
+  border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+
+.card .number{
+  font-size:28px;
+  font-weight:bold;
+  margin-top:8px;
+}
+
+.card .label{
+  color:#666;
+  font-size:14px;
+}
+
+.section{
+  background:white;
+  border-radius:12px;
+  padding:20px;
+  margin-bottom:20px;
+  overflow:auto;
+}
+
+.section h2{
+  margin-top:0;
+  color:#d71920;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:750px;
+}
+
+th,td{
+  padding:11px 9px;
+  border-bottom:1px solid #eee;
+  text-align:left;
+}
+
+th{
+  background:#fafafa;
+}
+
+.location{
+  font-weight:bold;
+}
+
+.rating{
+  font-weight:bold;
+}
+
+.small{
+  color:#777;
+  font-size:13px;
+}
+
+.hidden{
+  display:none;
+}
+
+.loading{
+  padding:20px;
+  text-align:center;
+}
+
+@media(max-width:900px){
+  .cards{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .filters{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="loginScreen" class="login">
+  <h2>Voz do Cliente</h2>
+  <p>Área administrativa — Supermercados Tradição</p>
+
+  <label>E-mail</label>
+  <input id="email" type="email" placeholder="Seu e-mail">
+
+  <label>Senha</label>
+  <input id="password" type="password" placeholder="Sua senha">
+
+  <button class="primary" onclick="login()">Entrar</button>
+
+  <div id="loginError" class="error"></div>
+</div>
+
+<div id="dashboard" class="hidden">
+
+<header>
+  <h1>Voz do Cliente — Umuarama</h1>
+  <button onclick="logout()">Sair</button>
+</header>
+
+<div class="container">
+
+  <div class="filters">
+
+    <div>
+      <label>Data inicial</label>
+      <input type="date" id="dateStart">
+    </div>
+
+    <div>
+      <label>Data final</label>
+      <input type="date" id="dateEnd">
+    </div>
+
+    <div>
+      <label>QR Code</label>
+      <select id="qrFilter">
+        <option value="">Todos os QR Codes</option>
+        <option value="01">01 — Açougue</option>
+        <option value="02">02 — Padaria</option>
+        <option value="03">03 — Feira</option>
+        <option value="04">04 — Entrada / TV</option>
+        <option value="05">05 — Caixa 1</option>
+        <option value="06">06 — Caixa 2</option>
+        <option value="07">07 — Caixa 3</option>
+        <option value="08">08 — Caixa 4</option>
+        <option value="09">09 — Caixa 5</option>
+        <option value="10">10 — Corredores</option>
+      </select>
+    </div>
+
+    <button onclick="loadDashboard()">Atualizar</button>
+
+  </div>
+
+  <div class="cards">
+
+    <div class="card">
+      <div class="label">Acessos</div>
+      <div class="number" id="totalAcessos">0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Não encontrou</div>
+      <div class="number" id="totalNaoEncontrou">0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Sugestões</div>
+      <div class="number" id="totalSugestoes">0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Reclamações</div>
+      <div class="number" id="totalReclamacoes">0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Elogios</div>
+      <div class="number" id="totalElogios">0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Nota média</div>
+      <div class="number" id="mediaNota">—</div>
+    </div>
+
+  </div>
+
+  <div class="section">
+    <h2>📍 Resultado por localização</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>QR</th>
+          <th>Local</th>
+          <th>Acessos</th>
+          <th>Não encontrou</th>
+          <th>Sugestões</th>
+          <th>Reclamações</th>
+          <th>Elogios</th>
+          <th>Nota</th>
+        </tr>
+      </thead>
+
+      <tbody id="locationTable"></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>🛍️ Produtos que os clientes não encontraram</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>QR</th>
+          <th>Local</th>
+          <th>Produto informado</th>
+        </tr>
+      </thead>
+
+      <tbody id="productsTable"></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>💡 Sugestões</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>QR</th>
+          <th>Local</th>
+          <th>Sugestão</th>
+        </tr>
+      </thead>
+
+      <tbody id="suggestionsTable"></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>😡 Reclamações</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>QR</th>
+          <th>Local</th>
+          <th>Reclamação</th>
+        </tr>
+      </thead>
+
+      <tbody id="complaintsTable"></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>❤️ Elogios</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>QR</th>
+          <th>Local</th>
+          <th>Elogio</th>
+        </tr>
+      </thead>
+
+      <tbody id="praiseTable"></tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<script>
+
+const cfg = window.TRADICAO_CONFIG;
+
+const supabaseClient = window.supabase.createClient(
+  cfg.SUPABASE_URL,
+  cfg.SUPABASE_ANON_KEY
+);
+
+const locations = {
+  "01":"Açougue",
+  "02":"Padaria",
+  "03":"Feira",
+  "04":"Entrada / TV",
+  "05":"Caixa 1",
+  "06":"Caixa 2",
+  "07":"Caixa 3",
+  "08":"Caixa 4",
+  "09":"Caixa 5",
+  "10":"Corredores"
+};
+
+let allData = [];
+
+async function login(){
+
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  document.getElementById("loginError").textContent = "";
+
+  const {error} = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if(error){
+    document.getElementById("loginError").textContent =
+      "E-mail ou senha incorretos.";
+    return;
+  }
+
+  document.getElementById("loginScreen").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+
+  loadDashboard();
+}
+
+async function logout(){
+
+  await supabaseClient.auth.signOut();
+
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("loginScreen").classList.remove("hidden");
+}
+
+async function loadDashboard(){
+
+  const start = document.getElementById("dateStart").value;
+  const end = document.getElementById("dateEnd").value;
+  const qr = document.getElementById("qrFilter").value;
+
+  let query = supabaseClient
+    .from("customer_interactions")
+    .select("*")
+    .order("created_at",{ascending:false});
+
+  if(start){
+    query = query.gte("created_at", start + "T00:00:00");
+  }
+
+  if(end){
+    query = query.lte("created_at", end + "T23:59:59");
+  }
+
+  if(qr){
+    query = query.eq("qr_code",qr);
+  }
+
+  const {data,error} = await query;
+
+  if(error){
+    console.error(error);
+    alert("Erro ao carregar os dados.");
+    return;
+  }
+
+  allData = data || [];
+
+  renderDashboard();
+}
+
+function renderDashboard(){
+
+  const count = type =>
+    allData.filter(x => x.interaction_type === type).length;
+
+  document.getElementById("totalAcessos").textContent =
+    count("acesso");
+
+  document.getElementById("totalNaoEncontrou").textContent =
+    count("produto_nao_encontrado");
+
+  document.getElementById("totalSugestoes").textContent =
+    count("sugestao");
+
+  document.getElementById("totalReclamacoes").textContent =
+    count("reclamacao");
+
+  document.getElementById("totalElogios").textContent =
+    count("elogio");
+
+  const ratings = allData
+    .filter(x => x.interaction_type === "avaliacao_atendimento")
+    .map(x => Number(x.rating))
+    .filter(x => x > 0);
+
+  if(ratings.length){
+    const avg =
+      ratings.reduce((a,b)=>a+b,0) / ratings.length;
+
+    document.getElementById("mediaNota").textContent =
+      avg.toFixed(1);
+  }else{
+    document.getElementById("mediaNota").textContent = "—";
+  }
+
+  renderLocations();
+  renderProducts();
+  renderSuggestions();
+  renderComplaints();
+  renderPraise();
+}
+
+function renderLocations(){
+
+  let html = "";
+
+  Object.keys(locations).forEach(qr => {
+
+    const rows = allData.filter(x => x.qr_code === qr);
+
+    const accesses =
+      rows.filter(x => x.interaction_type === "acesso").length;
+
+    const products =
+      rows.filter(x => x.interaction_type === "produto_nao_encontrado").length;
+
+    const suggestions =
+      rows.filter(x => x.interaction_type === "sugestao").length;
+
+    const complaints =
+      rows.filter(x => x.interaction_type === "reclamacao").length;
+
+    const praise =
+      rows.filter(x => x.interaction_type === "elogio").length;
+
+    const ratings = rows
+      .filter(x => x.interaction_type === "avaliacao_atendimento")
+      .map(x => Number(x.rating))
+      .filter(x => x > 0);
+
+    let average = "—";
+
+    if(ratings.length){
+      average =
+        (ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1);
+    }
+
+    html += `
+      <tr>
+        <td><strong>${qr}</strong></td>
+        <td class="location">${locations[qr]}</td>
+        <td>${accesses}</td>
+        <td>${products}</td>
+        <td>${suggestions}</td>
+        <td>${complaints}</td>
+        <td>${praise}</td>
+        <td class="rating">${average}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("locationTable").innerHTML = html;
+}
+
+function formatDate(value){
+
+  const d = new Date(value);
+
+  return d.toLocaleString("pt-BR",{
+    dateStyle:"short",
+    timeStyle:"short"
+  });
+}
+
+function localName(qr){
+
+  return locations[qr] || "QR " + qr;
+}
+
+function renderProducts(){
+
+  const rows = allData.filter(
+    x => x.interaction_type === "produto_nao_encontrado"
+  );
+
+  document.getElementById("productsTable").innerHTML =
+    rows.map(x => `
+      <tr>
+        <td>${formatDate(x.created_at)}</td>
+        <td>${x.qr_code}</td>
+        <td>${localName(x.qr_code)}</td>
+        <td>${escapeHtml(x.response_text || "")}</td>
+      </tr>
+    `).join("");
+}
+
+function renderSuggestions(){
+
+  const rows = allData.filter(
+    x => x.interaction_type === "sugestao"
+  );
+
+  document.getElementById("suggestionsTable").innerHTML =
+    rows.map(x => `
+      <tr>
+        <td>${formatDate(x.created_at)}</td>
+        <td>${x.qr_code}</td>
+        <td>${localName(x.qr_code)}</td>
+        <td>${escapeHtml(x.response_text || "")}</td>
+      </tr>
+    `).join("");
+}
+
+function renderComplaints(){
+
+  const rows = allData.filter(
+    x => x.interaction_type === "reclamacao"
+  );
+
+  document.getElementById("complaintsTable").innerHTML =
+    rows.map(x => `
+      <tr>
+        <td>${formatDate(x.created_at)}</td>
+        <td>${x.qr_code}</td>
+        <td>${localName(x.qr_code)}</td>
+        <td>${escapeHtml(x.response_text || "")}</td>
+      </tr>
+    `).join("");
+}
+
+function renderPraise(){
+
+  const rows = allData.filter(
+    x => x.interaction_type === "elogio"
+  );
+
+  document.getElementById("praiseTable").innerHTML =
+    rows.map(x => `
+      <tr>
+        <td>${formatDate(x.created_at)}</td>
+        <td>${x.qr_code}</td>
+        <td>${localName(x.qr_code)}</td>
+        <td>${escapeHtml(x.response_text || "")}</td>
+      </tr>
+    `).join("");
+}
+
+function escapeHtml(text){
+
+  return String(text)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+</script>
+
+</body>
+</html>
