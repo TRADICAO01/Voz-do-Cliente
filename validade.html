@@ -267,7 +267,7 @@ async function loadValidityList(bucket){
 .select("id,quantidade,validade,status,validade_produtos(descricao,codigo,codigo_barras)")
     .eq("loja_id",storeId)
     .in("status",["ativo","rebaixado"])
-    .order("validade",{ascending:true});aqui
+    .order("validade",{ascending:true});
   
 
   if(error){
