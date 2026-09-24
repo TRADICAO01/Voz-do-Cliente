@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validade Tradição</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;color:#222}
+    .app{max-width:520px;margin:0 auto;min-height:100vh;padding:22px 16px 30px}
+    .brand{text-align:center;margin:8px 0 24px}
+    .brand h1{margin:0;color:#c9141c;font-size:30px}
+    .brand p{margin:6px 0 0;font-weight:700;color:#555}
+    .card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 3px 14px rgba(0,0,0,.08);margin-bottom:16px}
+    label{display:block;font-weight:700;margin:0 0 7px}
+    input{width:100%;padding:15px;border:1px solid #ccc;border-radius:12px;font-size:16px;margin-bottom:14px}
+    button{width:100%;border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:800;cursor:pointer}
+    .primary{background:#d71920;color:#fff}
+    .secondary{background:#f0f0f0;color:#222}
+    .hidden{display:none}
+    .userbox{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}
+    .userbox strong{display:block;font-size:19px}
+    .userbox span{color:#666}
+    .logout{width:auto;padding:10px 14px;font-size:14px}
+    .scan{min-height:150px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:#fff7d6;border:2px dashed #d71920;color:#b10f16}
+    .scan .icon{font-size:48px;margin-bottom:8px}
+    .alerts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .alert{padding:18px 8px;text-align:center;border-radius:14px;font-weight:800;background:#f3f3f3}
+    .alert b{display:block;font-size:25px;margin-bottom:5px}
+    .a7{border:2px solid #e53935}.a15{border:2px solid #f39c12}.a30{border:2px solid #e0c200}
+    .message{text-align:center;font-weight:700;margin-top:12px}
+    .error{color:#c9141c}.success{color:#16833b}
+    .small{font-size:13px;color:#777;text-align:center;margin-top:14px}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section id="loginScreen">
+      <div class="brand">
+        <h1>VALIDADE TRADIÇÃO</h1>
+        <p>Controle de validade e perdas</p>
+      </div>
+      <div class="card">
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="username" placeholder="seu e-mail">
+        <label for="password">Senha</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="sua senha">
+        <button id="loginBtn" class="primary">ENTRAR</button>
+        <div id="loginMessage" class="message"></div>
+      </div>
+    </section>
+
+    <section id="homeScreen" class="hidden">
+      <div class="brand">
+        <h1>VALIDADE TRADIÇÃO</h1>
+        <p>Controle de validade e perdas</p>
+      </div>
+      <div class="card">
+        <div class="userbox">
+          <div>
+            <strong id="userName">Usuário</strong>
+            <span id="userStore">Loja</span>
+          </div>
+          <button id="logoutBtn" class="secondary logout">Sair</button>
+        </div>
+        <button id="scanBtn" class="scan" type="button">
+          <span class="icon">📷</span>
+          <span>ESCANEAR PRODUTO</span>
+        </button>
+        <div class="small">O leitor de código de barras será ativado na próxima etapa.</div>
+      </div>
+      <div class="card">
+        <h2 style="margin-top:0">Validades</h2>
+        <div class="alerts">
+          <div class="alert a7"><b>0</b>Até 7 dias</div>
+          <div class="alert a15"><b>0</b>Até 15 dias</div>
+          <div class="alert a30"><b>0</b>Até 30 dias</div>
+        </div>
+      </div>
+      <div id="homeMessage" class="message"></div>
+    </section>
+  </main>
+
+<script>
+  const cfg = window.TRADICAO_CONFIG || {};
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+
+  const loginScreen = document.getElementById("loginScreen");
+  const homeScreen = document.getElementById("homeScreen");
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const scanBtn = document.getElementById("scanBtn");
+  const loginMessage = document.getElementById("loginMessage");
+  const homeMessage = document.getElementById("homeMessage");
+  const userName = document.getElementById("userName");
+  const userStore = document.getElementById("userStore");
+
+  function showLogin(message="") {
+    loginScreen.classList.remove("hidden");
+    homeScreen.classList.add("hidden");
+    loginMessage.textContent = message;
+    loginMessage.className = message ? "message error" : "message";
+  }
+
+  async function loadProfile(user) {
+    const { data, error } = await sb
+      .from("validade_usuarios")
+      .select("nome,tipo_acesso,loja_id,validade_lojas(nome)")
+      .eq("usuario_id", user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw new Error("Usuário não possui perfil no Validade Tradição.");
+
+    userName.textContent = data.nome || user.email;
+    userStore.textContent = data.tipo_acesso === "admin"
+      ? "Administrador • Todas as lojas"
+      : `Loja • ${data.validade_lojas?.nome || "não definida"}`;
+
+    loginScreen.classList.add("hidden");
+    homeScreen.classList.remove("hidden");
+  }
+
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session?.user) {
+      try { await loadProfile(session.user); }
+      catch (e) { await sb.auth.signOut(); showLogin(e.message); }
+    }
+  }
+
+  loginBtn.addEventListener("click", async () => {
+    loginMessage.textContent = "";
+    loginBtn.disabled = true;
+    loginBtn.textContent = "ENTRANDO...";
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!email || !password) {
+      loginMessage.textContent = "Informe e-mail e senha.";
+      loginMessage.className = "message error";
+      loginBtn.disabled = false;
+      loginBtn.textContent = "ENTRAR";
+      return;
+    }
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      loginMessage.textContent = "E-mail ou senha incorretos.";
+      loginMessage.className = "message error";
+    } else {
+      try {
+        await loadProfile(data.user);
+      } catch (e) {
+        await sb.auth.signOut();
+        loginMessage.textContent = e.message;
+        loginMessage.className = "message error";
+      }
+    }
+
+    loginBtn.disabled = false;
+    loginBtn.textContent = "ENTRAR";
+  });
+
+  logoutBtn.addEventListener("click", async () => {
+    await sb.auth.signOut();
+    showLogin("");
+  });
+
+  scanBtn.addEventListener("click", () => {
+    homeMessage.textContent = "Scanner será ativado na próxima etapa.";
+    homeMessage.className = "message success";
+  });
+
+  sb.auth.onAuthStateChange(async (_event, session) => {
+    if (!session) showLogin("");
+  });
+
+  init();
+</script>
+</body>
+</html>
