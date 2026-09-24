@@ -264,10 +264,11 @@ async function loadValidityList(bucket){
   msg($("validityListMessage"),"Carregando...");
 
   const {data,error}=await sb.from("validade_registros")
-    .select("id,quantidade,validade,validade_produtos(descricao,codigo,codigo_barras)")
+.select("id,quantidade,validade,status,validade_produtos(descricao,codigo,codigo_barras)")
     .eq("loja_id",storeId)
     .in("status",["ativo","rebaixado"])
-    .order("validade",{ascending:true});
+    .order("validade",{ascending:true});aqui
+  
 
   if(error){
     msg($("validityListMessage"),"Não foi possível carregar a lista.","error");
